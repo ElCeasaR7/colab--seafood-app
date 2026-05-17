@@ -33,3 +33,15 @@ if __name__ == "__main__":
     print("--- تشغيل المحرك المالي لأسماك الفندق ---")
     report = calculate_savings_report()
     print(report.to_string(index=False))
+
+
+# ميزة قراءة الفواتير الضوئية (OCR Engine)
+import pytesseract
+from PIL import Image
+
+def extract_text_from_invoice(image_path):
+    try:
+        img = Image.open(image_path)
+        return pytesseract.image_to_string(img, lang='eng+ara')
+    except Exception as err:
+        return f"Error reading image: {str(err)}"
