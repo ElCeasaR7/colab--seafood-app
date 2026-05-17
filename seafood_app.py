@@ -2,43 +2,14 @@ import os
 import google.genai as genai
 import pandas as pd
 import numpy as np
-import pytesseract
-from PIL import Image
 
-client = genai.Client()
-
-data = [
-    {'م': 1, 'الصنف': 'فيليه ابيض بلوك الجزيرة كجم7.7', 'الزهراء': '', 'الرضوان': 185, 'فيش سنتر': '', 'الوهيب': 197, 'سعر الفندق': 175},
-    {'م': 2, 'الصنف': 'سمك فيليه ابيض كيلوات الجزيره', 'الزهراء': '', 'الرضوان': '', 'فيش سنتر': '', 'الوهيب': 165, 'سعر الفندق': 155},
-    {'م': 3, 'الصنف': 'کلیماری مستورد الجزیره', 'الزهراء': '', 'الرضوان': 280, 'فيش سنتر': '', 'الوهيب': 240, 'سعر الفندق': 190},
-    {'م': 4, 'الصنف': 'کلیماری مستورد', 'الزهراء': 165, 'فيش سنتر': 175, 'الوهيب': 190, 'سعر الفندق': 150},
-    {'م': 5, 'الصنف': 'کلیماری بلدی منظف', 'الزهراء': '', 'الرضوان': 620, 'فيش سنتر': 500, 'الوهيب': 520, 'سعر الفندق': 500},
-    {'م': 19, 'الصنف': 'بلطى منظف فریش', 'الزهراء': 110, 'الرضوان': 125, 'فيش سنتر': 120, 'الوهيب': 145, 'سعر الفندق': 115},
-    {'م': 25, 'الصنف': 'دنيس', 'الزهراء': '', 'الرضوان': 630, 'فيش سنتر': 670, 'الوهيب': 600, 'سعر الفندق': 50}
-]
-
-def calculate_savings_report():
-    df = pd.DataFrame(data)
-    supplier_cols = ['الزهراء', 'الرضوان', 'فيش سنتر', 'الوهيب']
-    for col in supplier_cols:
-        df[col] = df[col].astype(str).str.extract('(\\d+)').astype(float)
-    df['أقل سعر مورد'] = df[supplier_cols].min(axis=1)
-    df['اسم المورد الأقل سعراً'] = df[supplier_cols].idxmin(axis=1)
-    df['نسبة الوفر (%)'] = np.where(
-        df['سعر الفندق'] != 0,
-        ((df['سعر الفندق'] - df['أقل سعر مورد']) / df['سعر الفندق']) * 100,
-        np.nan
-    )
-    return df[['الصنف', 'أقل سعر مورد', 'اسم المورد الأقل سعراً', 'سعر الفندق', 'نسبة الوفر (%)']]
-
-def extract_text_from_invoice(image_path):
+def analyze_invoice_with_gemini(image_path, api_key):
     try:
-        img = Image.open(image_path)
-        return pytesseract.image_to_string(img, lang='eng+ara')
+        client = genai.Client(api_key=api_key)
+        uploaded_file = client.files.upload(file=image_path)
+        prompt = 'Analyze invoice and extract items.'
+        response = client.models.generate_content(model='gemini-2.5-flash', contents=[uploaded_file, prompt])
+        client.files.delete(name=uploaded_file.name)
+        return response.text
     except Exception as err:
-        return f'Error reading image: {str(err)}'
-
-if __name__ == '__main__':
-    print('--- تشغيل المحرك المالي المتكامل لأسماك الفندق ---')
-    report = calculate_savings_report()
-    print(report.to_string(index=False))
+        return f'Error: {str(err)}'
